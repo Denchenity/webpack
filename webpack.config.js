@@ -5,6 +5,7 @@ const CopyWebpackPlugin = require('copy-webpack-plugin')// Подключаем 
 const MiniCssExtractPlugin = require('mini-css-extract-plugin')// Подключаем плагин для css
 const TerserWebpackPlugin = require('terser-webpack-plugin') // минификация js 
 const OptimizeCssAssetsWebpackPlugin = require('optimize-css-assets-webpack-plugin') // минификация css
+const {BundleAnalyzerPlugin} = require('webpack-bundle-analyzer')
 const { userInfo } = require('os')
 
 const isDev = process.env.NODE_ENV === 'development';
@@ -61,19 +62,20 @@ const babelOptions = preset => {
     return opts
 } 
 
+const jsLoaders = () => {
+    const loaders = [{
+        loader: 'babel-loader',
+        options: babelOptions(),
+    }]
 
-module.exports = {
-    context: path.resolve(__dirname, 'src'),
-    mode: 'development',
-    entry:{
-        main: ['@babel/polyfill','./index.js'],
-        analitics: './analitics.ts'
-      },
-    output: { // результат работы вебпака 
-        filename: filename('js'),
-        path: path.resolve(__dirname, 'dist') //__dirname - cистемная переменная, тут мы все складваем в папку dist
-    },
-    plugins:[
+    if(isDev){
+        loaders.push('eslint-loader')
+    }
+    return loaders
+}
+
+const plugins = () =>{
+    const base = [
         new HTMLWebpackPlugin({
             template: './index.html',
             minify:{
@@ -92,7 +94,26 @@ module.exports = {
         new MiniCssExtractPlugin({
                 filename: filename('css'),
         }),
-    ],
+    ]
+    if(IsProd){
+        base.push(new BundleAnalyzerPlugin())
+    }
+    return base
+}
+
+
+module.exports = {
+    context: path.resolve(__dirname, 'src'),
+    mode: 'development',
+    entry:{
+        main: ['@babel/polyfill','./index.jsx'],
+        analitics: './analitics.ts'
+      },
+    output: { // результат работы вебпака 
+        filename: filename('js'),
+        path: path.resolve(__dirname, 'dist') //__dirname - cистемная переменная, тут мы все складваем в папку dist
+    },
+    plugins: plugins(),
     resolve:{
         extensions: ['.js','.json','.png'],
         alias: {
@@ -100,6 +121,7 @@ module.exports = {
             '@': path.resolve(__dirname, 'src')
         }
     },
+    devtool: isDev ? `source-map` : false,
     devServer:{
         port: 4200
     },
@@ -138,10 +160,7 @@ module.exports = {
             {
                 test: /\.js$/,
                 exclude: /node_modules/,
-                use: {
-                    loader: 'babel-loader',
-                    options: babelOptions(),
-                }
+                use: jsLoaders(),
             },
             {
                 test: /\.ts$/,
@@ -149,6 +168,14 @@ module.exports = {
                 use: {
                     loader: 'babel-loader',
                     options:babelOptions('@babel/preset-typescript'), 
+                }
+            },
+            {
+                test: /\.jsx$/,
+                exclude: /node_modules/,
+                use: {
+                    loader: 'babel-loader',
+                    options:babelOptions('@babel/preset-react'), 
                 }
             },
         ]
